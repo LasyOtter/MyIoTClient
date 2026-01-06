@@ -72,3 +72,132 @@ public class SerialConnectionConfig : ConnectionConfig
     /// </summary>
     public string Parity { get; set; } = "None";
 }
+
+/// <summary>
+/// 三菱MC协议连接配置
+/// </summary>
+public class MitsubishiMcConnectionConfig : TcpConnectionConfig
+{
+    /// <summary>
+    /// 网络号（默认0）
+    /// </summary>
+    public byte NetworkNumber { get; set; } = 0;
+
+    /// <summary>
+    /// PC号（默认255）
+    /// </summary>
+    public byte PcNumber { get; set; } = 0xFF;
+
+    /// <summary>
+    /// 请求目标模块I/O号（默认0）
+    /// </summary>
+    public ushort TargetModuleIoNumber { get; set; } = 0;
+
+    /// <summary>
+    /// 请求目标模块站号（默认0）
+    /// </summary>
+    public byte TargetModuleStationNumber { get; set; } = 0;
+
+    /// <summary>
+    /// CPU监视定时器（默认8000毫秒）
+    /// </summary>
+    public ushort CpuWatchTimer { get; set; } = 8000;
+
+    /// <summary>
+    /// 是否使用二进制格式（默认false，使用ASCII格式）
+    /// </summary>
+    public bool UseBinaryFormat { get; set; } = false;
+}
+
+/// <summary>
+/// 欧姆龙FINS协议连接配置
+/// </summary>
+public class OmronFinsConnectionConfig : TcpConnectionConfig
+{
+    /// <summary>
+    /// 本地网络号（默认0）
+    /// </summary>
+    public byte LocalNetworkNumber { get; set; } = 0;
+
+    /// <summary>
+    /// 本地节点号（默认0）
+    /// </summary>
+    public byte LocalNodeNumber { get; set; } = 0;
+
+    /// <summary>
+    /// 本地单元号（默认0）
+    /// </summary>
+    public byte LocalUnitNumber { get; set; } = 0;
+
+    /// <summary>
+    /// 远程网络号（默认0）
+    /// </summary>
+    public byte RemoteNetworkNumber { get; set; } = 0;
+
+    /// <summary>
+    /// 远程节点号（PLC节点号）
+    /// </summary>
+    public required byte RemoteNodeNumber { get; set; }
+
+    /// <summary>
+    /// 远程单元号（默认0）
+    /// </summary>
+    public byte RemoteUnitNumber { get; set; } = 0;
+
+    /// <summary>
+    /// FINS/UDP端口（默认9600）
+    /// </summary>
+    public int FinsUdpPort { get; set; } = 9600;
+
+    /// <summary>
+    /// 使用TCP还是UDP（默认TCP）
+    /// </summary>
+    public bool UseTcp { get; set; } = true;
+}
+
+/// <summary>
+/// BACnet连接配置
+/// </summary>
+public class BacNetConnectionConfig : ConnectionConfig
+{
+    /// <summary>
+    /// 本地IP地址
+    /// </summary>
+    public required string LocalIpAddress { get; set; }
+
+    /// <summary>
+    /// BACnet端口（默认47808）
+    /// </summary>
+    public int Port { get; set; } = 47808;
+
+    /// <summary>
+    /// 设备实例ID
+    /// </summary>
+    public uint DeviceId { get; set; } = 1234;
+}
+
+/// <summary>
+/// OPC UA客户端配置
+/// </summary>
+public class OpcUaConnectionConfig : ConnectionConfig
+{
+    /// <summary>
+    /// 服务器地址 (opc.tcp://localhost:4840)
+    /// </summary>
+    public required string EndpointUrl { get; set; }
+
+    /// <summary>
+    /// 用户名
+    /// </summary>
+    public string? Username { get; set; }
+
+    /// <summary>
+    /// 密码
+    /// </summary>
+    public string? Password { get; set; }
+
+    /// <summary>
+    /// 安全策略
+    /// </summary>
+    public string SecurityPolicy { get; set; } = "None";
+}

@@ -36,16 +36,18 @@ MyIoTClient/
 
 ## 支持的协议
 
-### 已实现（基础版本）
+### 已实现（完整版本）
 - ✅ **Modbus TCP** - 工业标准的通讯协议
+- ✅ **Modbus RTU** - 串口版本的Modbus协议（完整功能：读写保持寄存器、输入寄存器、线圈等）
 - ✅ **OPC UA** - 统一架构的开放平台通讯协议（框架）
+- ✅ **BACnet** - 楼宇自控网络协议（框架）
 - ✅ **西门子 S7** - 西门子PLC通讯协议（框架）
+- ✅ **三菱MC** - 三菱PLC通讯协议（完整实现）
+- ✅ **欧姆龙FINS** - 欧姆龙PLC通讯协议（完整实现）
 
 ### 计划支持
-- 🔄 **Modbus RTU** - 串口版本的Modbus协议
-- 🔄 **BACnet** - 楼宇自控网络协议
-- 🔄 **三菱MC** - 三菱PLC通讯协议
-- 🔄 **欧姆龙FINS** - 欧姆龙PLC通讯协议
+- 🔄 **三菱MC** - 三菱PLC通讯协议（✅ 已完成完整实现）
+- 🔄 **欧姆龙FINS** - 欧姆龙PLC通讯协议（✅ 已完成完整实现）
 
 ## 快速开始
 
@@ -155,6 +157,87 @@ var result = await client.ReadAsync("DB1.DBW0");
 await client.WriteAsync("M0.0", true);
 ```
 
+### 三菱MC协议示例
+
+```csharp
+using MyIoTClient.Protocols.MitsubishiMc;
+
+// 创建连接配置
+var config = new MitsubishiMcConnectionConfig
+{
+    IpAddress = "192.168.1.100",
+    Port = 5007,
+    NetworkNumber = 0,
+    PcNumber = 0xFF,
+    UseBinaryFormat = false // 使用ASCII格式
+};
+
+using var client = new MitsubishiMcClient(config);
+await client.ConnectAsync();
+
+// 读取数据寄存器
+var dReadResult = await client.ReadAsync("D0", 10);
+if (dReadResult.IsSuccess)
+{
+    var dValues = dReadResult.Value as ushort[];
+    Console.WriteLine($"D0-D9: {string.Join(", ", dValues)}");
+}
+
+// 写入辅助继电器
+var mWriteResult = await client.WriteAsync("M0", true);
+if (mWriteResult.IsSuccess)
+{
+    Console.WriteLine("M0写入成功");
+}
+
+// 批量读取
+var batchReadResult = await client.BatchReadAsync(new Dictionary<string, int>
+{
+    {"D0", 5},
+    {"D100", 3}
+});
+```
+
+### 欧姆龙FINS协议示例
+
+```csharp
+using MyIoTClient.Protocols.OmronFins;
+
+var config = new OmronFinsConnectionConfig
+{
+    IpAddress = "192.168.1.50",
+    Port = 9600,
+    RemoteNodeNumber = 1,
+    UseTcp = true // 使用TCP
+};
+
+using var client = new OmronFinsClient(config);
+await client.ConnectAsync();
+
+// 读取CIO区域
+var cioResult = await client.ReadAsync("CIO0", 10);
+if (cioResult.IsSuccess)
+{
+    var values = cioResult.Value as ushort[];
+    Console.WriteLine($"CIO0-CIO9: {string.Join(", ", values)}");
+}
+
+// 写入数据内存
+var dmWriteResult = await client.WriteAsync("DM0", 12345);
+if (dmWriteResult.IsSuccess)
+{
+    Console.WriteLine("DM0写入成功");
+}
+
+// 读取CPU状态
+var cpuStatus = await client.ReadCpuStatusAsync();
+if (cpuStatus.IsSuccess)
+{
+    var status = cpuStatus.Value as Dictionary<string, object>;
+    Console.WriteLine($"CPU状态: {status["Mode"]}");
+}
+```
+
 ## 核心功能
 
 ### IProtocolClient 接口
@@ -186,12 +269,12 @@ await client.WriteAsync("M0.0", true);
 - [x] 项目架构搭建
 - [x] 核心接口定义
 - [x] Modbus TCP 基础实现
+- [x] Modbus RTU 完整实现
 - [x] OPC UA 框架实现
+- [x] BACnet 协议实现
 - [x] 西门子 S7 框架实现
-- [ ] Modbus RTU 完整实现
-- [ ] BACnet 协议实现
-- [ ] 三菱MC协议实现
-- [ ] 欧姆龙FINS协议实现
+- [x] 三菱MC协议完整实现
+- [x] 欧姆龙FINS协议完整实现
 - [ ] 单元测试
 - [ ] 性能优化
 - [ ] 文档完善
