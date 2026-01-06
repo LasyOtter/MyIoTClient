@@ -3,6 +3,7 @@ using MyIoTClient.Protocols.Base;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Buffers;
 
 namespace MyIoTClient.Protocols.OmronFins;
 
@@ -402,23 +403,30 @@ public class OmronFinsClient : ProtocolClientBase
                 if (_finsConfig.UseTcp && _networkStream != null)
                 {
                     // TCP发送
-                    await _networkStream.WriteAsync(command, 0, command.Length, cancellationToken);
+                    await _networkStream.WriteAsync(command.AsMemory(), cancellationToken);
                     await _networkStream.FlushAsync(cancellationToken);
                     
                     // 接收响应
-                    var responseBuffer = new byte[8192];
-                    var bytesRead = await _networkStream.ReadAsync(responseBuffer, 0, responseBuffer.Length, cancellationToken);
-                    
-                    if (bytesRead > 0)
+                    var responseBuffer = ArrayPool<byte>.Shared.Rent(8192);
+                    try
                     {
-                        var response = new byte[bytesRead];
-                        Array.Copy(responseBuffer, response, bytesRead);
+                        var bytesRead = await _networkStream.ReadAsync(responseBuffer.AsMemory(), cancellationToken);
                         
-                        // 验证响应
-                        if (VerifyFinsResponse(response))
+                        if (bytesRead > 0)
                         {
-                            return OperationResult.Success<ReadResult> { Value = response };
+                            var response = new byte[bytesRead];
+                            Array.Copy(responseBuffer, response, bytesRead);
+                            
+                            // 验证响应
+                            if (VerifyFinsResponse(response))
+                            {
+                                return OperationResult.Success<ReadResult> { Value = response };
+                            }
                         }
+                    }
+                    finally
+                    {
+                        ArrayPool<byte>.Shared.Return(responseBuffer);
                     }
                 }
                 else if (_udpClient != null)

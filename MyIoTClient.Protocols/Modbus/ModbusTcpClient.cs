@@ -1,6 +1,7 @@
 using MyIoTClient.Core.Models;
 using MyIoTClient.Protocols.Base;
 using System.Net.Sockets;
+using System.Buffers;
 
 namespace MyIoTClient.Protocols.Modbus;
 
@@ -70,23 +71,30 @@ public class ModbusTcpClient : ProtocolClientBase
             var request = BuildReadRequest(startAddress, (ushort)length);
             await _stream.WriteAsync(request, cancellationToken);
 
-            var response = new byte[1024];
-            var bytesRead = await _stream.ReadAsync(response, cancellationToken);
-
-            if (bytesRead < 9)
+            var responseBuffer = ArrayPool<byte>.Shared.Rent(1024);
+            try
             {
-                return OperationResult.Fail<ReadResult>("响应数据不完整");
+                var bytesRead = await _stream.ReadAsync(responseBuffer, cancellationToken);
+
+                if (bytesRead < 9)
+                {
+                    return OperationResult.Fail<ReadResult>("响应数据不完整");
+                }
+
+                var dataLength = responseBuffer[8];
+                var data = new byte[dataLength];
+                Array.Copy(responseBuffer, 9, data, 0, dataLength);
+
+                var result = OperationResult.Success<ReadResult>();
+                result.Address = address;
+                result.Value = data;
+                result.DataType = typeof(byte[]);
+                return result;
             }
-
-            var dataLength = response[8];
-            var data = new byte[dataLength];
-            Array.Copy(response, 9, data, 0, dataLength);
-
-            var result = OperationResult.Success<ReadResult>();
-            result.Address = address;
-            result.Value = data;
-            result.DataType = typeof(byte[]);
-            return result;
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(responseBuffer);
+            }
         }
         catch (Exception ex)
         {

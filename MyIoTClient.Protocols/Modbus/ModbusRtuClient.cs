@@ -1,6 +1,8 @@
 using MyIoTClient.Core.Models;
 using MyIoTClient.Protocols.Base;
+using MyIoTClient.Core.Utils;
 using System.IO.Ports;
+using System.Buffers;
 
 namespace MyIoTClient.Protocols.Modbus;
 
@@ -78,34 +80,45 @@ public class ModbusRtuClient : ProtocolClientBase
             }
 
             var request = BuildReadRequest(startAddress, (ushort)length);
-            _serialPort.Write(request, 0, request.Length);
-
-            await Task.Delay(50, cancellationToken); // 等待设备响应
+            await _serialPort.BaseStream.WriteAsync(request, cancellationToken);
 
             var responseLength = 5 + length * 2;
-            var response = new byte[responseLength];
-            var bytesRead = _serialPort.Read(response, 0, responseLength);
-
-            if (bytesRead < 5)
+            var response = ArrayPool<byte>.Shared.Rent(responseLength);
+            try
             {
-                return OperationResult.Fail<ReadResult>("响应数据不完整");
-            }
+                int totalRead = 0;
+                while (totalRead < responseLength)
+                {
+                    int read = await _serialPort.BaseStream.ReadAsync(response.AsMemory(totalRead, responseLength - totalRead), cancellationToken);
+                    if (read == 0) break;
+                    totalRead += read;
+                }
 
-            // 验证CRC
-            if (!VerifyCrc(response, bytesRead))
+                if (totalRead < 5)
+                {
+                    return OperationResult.Fail<ReadResult>("响应数据不完整");
+                }
+
+                // 验证CRC
+                if (!VerifyCrc(response, totalRead))
+                {
+                    return OperationResult.Fail<ReadResult>("CRC校验失败");
+                }
+
+                var dataLength = response[2];
+                var data = new byte[dataLength];
+                Array.Copy(response, 3, data, 0, dataLength);
+
+                var result = OperationResult.Success<ReadResult>();
+                result.Address = address;
+                result.Value = data;
+                result.DataType = typeof(byte[]);
+                return result;
+            }
+            finally
             {
-                return OperationResult.Fail<ReadResult>("CRC校验失败");
+                ArrayPool<byte>.Shared.Return(response);
             }
-
-            var dataLength = response[2];
-            var data = new byte[dataLength];
-            Array.Copy(response, 3, data, 0, dataLength);
-
-            var result = OperationResult.Success<ReadResult>();
-            result.Address = address;
-            result.Value = data;
-            result.DataType = typeof(byte[]);
-            return result;
         }
         catch (Exception ex)
         {
@@ -140,28 +153,39 @@ public class ModbusRtuClient : ProtocolClientBase
             };
 
             var request = BuildWriteRequest(registerAddress, registerValue);
-            _serialPort.Write(request, 0, request.Length);
+            await _serialPort.BaseStream.WriteAsync(request, cancellationToken);
 
-            await Task.Delay(50, cancellationToken); // 等待设备响应
-
-            var response = new byte[8];
-            var bytesRead = _serialPort.Read(response, 0, 8);
-
-            if (bytesRead < 8)
+            var response = ArrayPool<byte>.Shared.Rent(8);
+            try
             {
-                return OperationResult.Fail<WriteResult>("响应数据不完整");
-            }
+                int totalRead = 0;
+                while (totalRead < 8)
+                {
+                    int read = await _serialPort.BaseStream.ReadAsync(response.AsMemory(totalRead, 8 - totalRead), cancellationToken);
+                    if (read == 0) break;
+                    totalRead += read;
+                }
 
-            // 验证CRC
-            if (!VerifyCrc(response, bytesRead))
+                if (totalRead < 8)
+                {
+                    return OperationResult.Fail<WriteResult>("响应数据不完整");
+                }
+
+                // 验证CRC
+                if (!VerifyCrc(response, totalRead))
+                {
+                    return OperationResult.Fail<WriteResult>("CRC校验失败");
+                }
+
+                var result = OperationResult.Success<WriteResult>();
+                result.Address = address;
+                result.Value = value;
+                return result;
+            }
+            finally
             {
-                return OperationResult.Fail<WriteResult>("CRC校验失败");
+                ArrayPool<byte>.Shared.Return(response);
             }
-
-            var result = OperationResult.Success<WriteResult>();
-            result.Address = address;
-            result.Value = value;
-            return result;
         }
         catch (Exception ex)
         {
@@ -479,30 +503,13 @@ public class ModbusRtuClient : ProtocolClientBase
 
     private ushort CalculateCrc(byte[] data, int length)
     {
-        ushort crc = 0xFFFF;
-        for (int i = 0; i < length; i++)
-        {
-            crc ^= data[i];
-            for (int j = 0; j < 8; j++)
-            {
-                if ((crc & 0x0001) != 0)
-                {
-                    crc >>= 1;
-                    crc ^= 0xA001;
-                }
-                else
-                {
-                    crc >>= 1;
-                }
-            }
-        }
-        return crc;
+        return ModbusCrc.Calculate(data.AsSpan(0, length));
     }
 
     private bool VerifyCrc(byte[] data, int length)
     {
         if (length < 2) return false;
-        var calculatedCrc = CalculateCrc(data, length - 2);
+        var calculatedCrc = ModbusCrc.Calculate(data.AsSpan(0, length - 2));
         var receivedCrc = (ushort)(data[length - 2] | (data[length - 1] << 8));
         return calculatedCrc == receivedCrc;
     }

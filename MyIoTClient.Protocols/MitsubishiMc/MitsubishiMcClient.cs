@@ -2,6 +2,7 @@ using MyIoTClient.Core.Models;
 using MyIoTClient.Protocols.Base;
 using System.Net.Sockets;
 using System.Text;
+using System.Buffers;
 
 namespace MyIoTClient.Protocols.MitsubishiMc;
 
@@ -87,46 +88,53 @@ public class MitsubishiMcClient : ProtocolClientBase
             var requestFrame = BuildReadRequestFrame(deviceCode, addressOffset, length);
             
             // 发送请求
-            await _networkStream.WriteAsync(requestFrame, 0, requestFrame.Length, cancellationToken);
+            await _networkStream.WriteAsync(requestFrame, cancellationToken);
             await _networkStream.FlushAsync(cancellationToken);
             
             // 接收响应
-            var responseBuffer = new byte[2048];
-            var bytesRead = await _networkStream.ReadAsync(responseBuffer, 0, responseBuffer.Length, cancellationToken);
-            
-            if (bytesRead <= 0)
+            var responseBuffer = ArrayPool<byte>.Shared.Rent(2048);
+            try
             {
-                return OperationResult.Fail<ReadResult>("PLC未响应");
-            }
-            
-            // 验证响应
-            if (!_mcConfig.UseBinaryFormat)
-            {
-                // ASCII格式处理
-                var response = VerifyAsciiResponse(responseBuffer, bytesRead);
-                if (!response.IsSuccess)
+                var bytesRead = await _networkStream.ReadAsync(responseBuffer, cancellationToken);
+                
+                if (bytesRead <= 0)
                 {
-                    return response;
+                    return OperationResult.Fail<ReadResult>("PLC未响应");
                 }
-            }
-            else
-            {
-                // 二进制格式处理
-                var response = VerifyBinaryResponse(responseBuffer, bytesRead);
-                if (!response.IsSuccess)
+                
+                // 验证响应
+                if (!_mcConfig.UseBinaryFormat)
                 {
-                    return response;
+                    // ASCII格式处理
+                    var response = VerifyAsciiResponse(responseBuffer, bytesRead);
+                    if (!response.IsSuccess)
+                    {
+                        return response;
+                    }
                 }
+                else
+                {
+                    // 二进制格式处理
+                    var response = VerifyBinaryResponse(responseBuffer, bytesRead);
+                    if (!response.IsSuccess)
+                    {
+                        return response;
+                    }
+                }
+                
+                // 解析响应数据
+                var data = ParseReadResponse(responseBuffer, bytesRead, length, dataType);
+                
+                var result = OperationResult.Success<ReadResult>();
+                result.Address = address;
+                result.Value = data;
+                result.DataType = dataType;
+                return result;
             }
-            
-            // 解析响应数据
-            var data = ParseReadResponse(responseBuffer, bytesRead, length, dataType);
-            
-            var result = OperationResult.Success<ReadResult>();
-            result.Address = address;
-            result.Value = data;
-            result.DataType = dataType;
-            return result;
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(responseBuffer);
+            }
         }
         catch (Exception ex)
         {
@@ -261,27 +269,38 @@ public class MitsubishiMcClient : ProtocolClientBase
     /// </summary>
     private (string deviceCode, int addressOffset, Type dataType) ParseMcAddress(string address)
     {
-        var deviceCode = address[..2];
-        var addressPart = address[2..];
+        string deviceCode;
+        string addressPart;
+
+        if (address.Length >= 2 && char.IsLetter(address[0]) && char.IsLetter(address[1]))
+        {
+            deviceCode = address[..2].ToUpper();
+            addressPart = address[2..];
+        }
+        else
+        {
+            deviceCode = address[..1].ToUpper();
+            addressPart = address[1..];
+        }
         
         if (!int.TryParse(addressPart, out var offset))
         {
             throw new ArgumentException($"地址格式错误: {address}");
         }
         
-        return deviceCode.ToUpper() switch
+        return deviceCode switch
         {
-            "D" => ("D", offset, typeof(ushort[])),
-            "M" => ("M", offset, typeof(bool[])),
-            "X" => ("X", offset, typeof(bool[])),
-            "Y" => ("Y", offset, typeof(bool[])),
-            "L" => ("L", offset, typeof(bool[])),
-            "F" => ("F", offset, typeof(bool[])),
-            "V" => ("V", offset, typeof(bool[])),
-            "B" => ("B", offset, typeof(ushort[])),
-            "W" => ("W", offset, typeof(ushort[])),
-            "R" => ("R", offset, typeof(ushort[])),
-            "Z" => ("Z", offset, typeof(ushort[])),
+            "D" => ("D*", offset, typeof(ushort[])),
+            "M" => ("M*", offset, typeof(bool[])),
+            "X" => ("X*", offset, typeof(bool[])),
+            "Y" => ("Y*", offset, typeof(bool[])),
+            "L" => ("L*", offset, typeof(bool[])),
+            "F" => ("F*", offset, typeof(bool[])),
+            "V" => ("V*", offset, typeof(bool[])),
+            "B" => ("B*", offset, typeof(ushort[])),
+            "W" => ("W*", offset, typeof(ushort[])),
+            "R" => ("R*", offset, typeof(ushort[])),
+            "Z" => ("Z*", offset, typeof(ushort[])),
             _ => throw new ArgumentException($"不支持的设备类型: {deviceCode}")
         };
     }
