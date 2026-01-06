@@ -4,27 +4,6 @@ using MyIoTClient.Protocols.Base;
 namespace MyIoTClient.Protocols.BacNet;
 
 /// <summary>
-/// BACnet连接配置
-/// </summary>
-public class BacNetConnectionConfig : ConnectionConfig
-{
-    /// <summary>
-    /// 本地IP地址
-    /// </summary>
-    public required string LocalIpAddress { get; set; }
-
-    /// <summary>
-    /// BACnet端口（默认47808）
-    /// </summary>
-    public int Port { get; set; } = 47808;
-
-    /// <summary>
-    /// 设备实例ID
-    /// </summary>
-    public uint DeviceId { get; set; } = 1234;
-}
-
-/// <summary>
 /// BACnet客户端
 /// </summary>
 public class BacNetClient : ProtocolClientBase
