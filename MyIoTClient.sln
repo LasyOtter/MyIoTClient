@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyIoTClient.Core", "MyIoTClient.Core\MyIoTClient.Core.csproj", "{1C86BF65-1E7D-4263-BDB3-68471B8FF334}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyIoTClient.Protocols", "MyIoTClient.Protocols\MyIoTClient.Protocols.csproj", "{EB783EC5-EFC8-4848-86E7-795ED520C008}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyIoTClient.Sample", "MyIoTClient.Sample\MyIoTClient.Sample.csproj", "{17DB2330-D054-45A4-A4FD-8909DCFFC618}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1C86BF65-1E7D-4263-BDB3-68471B8FF334}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1C86BF65-1E7D-4263-BDB3-68471B8FF334}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1C86BF65-1E7D-4263-BDB3-68471B8FF334}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1C86BF65-1E7D-4263-BDB3-68471B8FF334}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EB783EC5-EFC8-4848-86E7-795ED520C008}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EB783EC5-EFC8-4848-86E7-795ED520C008}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EB783EC5-EFC8-4848-86E7-795ED520C008}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EB783EC5-EFC8-4848-86E7-795ED520C008}.Release|Any CPU.Build.0 = Release|Any CPU
+		{17DB2330-D054-45A4-A4FD-8909DCFFC618}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{17DB2330-D054-45A4-A4FD-8909DCFFC618}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{17DB2330-D054-45A4-A4FD-8909DCFFC618}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{17DB2330-D054-45A4-A4FD-8909DCFFC618}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
